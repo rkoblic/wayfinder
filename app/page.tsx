@@ -20,6 +20,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState("");
+  const [fetchError, setFetchError] = useState("");
 
   // Fetch seeds on mount
   useEffect(() => {
@@ -29,13 +30,14 @@ export default function Home() {
   async function fetchSeeds() {
     try {
       setIsLoading(true);
+      setFetchError("");
       const response = await fetch("/api/seeds");
       if (!response.ok) throw new Error("Failed to fetch seeds");
       const data = await response.json();
       setSeeds(data);
     } catch (err) {
       console.error("Error fetching seeds:", err);
-      setError("Failed to load seeds");
+      setFetchError("Failed to load seeds");
     } finally {
       setIsLoading(false);
     }
@@ -123,6 +125,10 @@ export default function Home() {
 
         {isLoading ? (
           <Loading text="Loading your seeds..." />
+        ) : fetchError ? (
+          <Card className="text-center border-red-300 bg-red-50 dark:bg-red-900/20">
+            <p className="text-red-600 dark:text-red-400">{fetchError}</p>
+          </Card>
         ) : seeds.length === 0 ? (
           <Card className="text-center">
             <p className="text-gray-600 dark:text-gray-400">
