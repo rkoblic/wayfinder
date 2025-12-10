@@ -1,0 +1,131 @@
+// Wayfinder Data Models (MVP)
+// Based on PRD and Data Models specification
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// 1. User
+// Simple user model for MVP (auth skipped, using default user)
+model User {
+  id              String           @id @default(cuid())
+  email           String?          @unique
+  createdAt       DateTime         @default(now()) @map("created_at")
+
+  ideaSeeds       IdeaSeed[]
+  nodes           Node[]
+  microDiscoveries MicroDiscovery[]
+  reflections     Reflection[]
+  selfNarratives  SelfNarrative[]
+
+  @@map("users")
+}
+
+// 2. IdeaSeed
+// Initial concept entered or chosen by the user
+model IdeaSeed {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  text      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  nodes     Node[]
+
+  @@index([userId, createdAt])
+  @@map("idea_seeds")
+}
+
+// 3. Node
+// Represents a concept in the user's curiosity map
+model Node {
+  id            String    @id @default(cuid())
+  userId        String    @map("user_id")
+  seedId        String?   @map("seed_id")
+  concept       String
+  generatedVia  String    @map("generated_via")  // "seed" or "sideways"
+  metadata      Json?
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  seed          IdeaSeed?         @relation(fields: [seedId], references: [id], onDelete: SetNull)
+  linksFrom     LateralLink[]     @relation("FromNode")
+  linksTo       LateralLink[]     @relation("ToNode")
+  microDiscoveries MicroDiscovery[]
+  reflections   Reflection[]
+
+  @@index([userId, createdAt])
+  @@map("nodes")
+}
+
+// 4. LateralLink
+// Directed connection between two Nodes (edges in the curiosity map)
+model LateralLink {
+  id        String   @id @default(cuid())
+  fromNode  String   @map("from_node")
+  toNode    String   @map("to_node")
+  relation  String   // "analogy", "contrast", "pattern", "association"
+  createdAt DateTime @default(now()) @map("created_at")
+
+  from      Node     @relation("FromNode", fields: [fromNode], references: [id], onDelete: Cascade)
+  to        Node     @relation("ToNode", fields: [toNode], references: [id], onDelete: Cascade)
+
+  @@index([fromNode])
+  @@index([toNode])
+  @@map("lateral_links")
+}
+
+// 5. MicroDiscovery
+// Stores the prompt and user's response for a micro-discovery
+model MicroDiscovery {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  nodeId    String   @map("node_id")
+  prompt    String   @db.Text
+  response  String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  node      Node     @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("micro_discoveries")
+}
+
+// 6. Reflection
+// Short reflection and tag for a given Node
+model Reflection {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  nodeId    String   @map("node_id")
+  surprise  String?  @db.Text
+  tag       String
+  metaphor  String?  @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  node      Node     @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+
+  @@index([userId, tag])
+  @@map("reflections")
+}
+
+// 7. SelfNarrative
+// Generated narrative text that summarizes user's curiosity patterns
+model SelfNarrative {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  narrative String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("self_narratives")
+}
