@@ -10,7 +10,7 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
-const MODEL = "claude-3-5-sonnet-20241022";
+const MODEL = "claude-sonnet-4-5-20250929";
 
 // Type definitions for lateral connections
 export interface LateralConnection {
@@ -55,8 +55,14 @@ Return a JSON array only.`,
       throw new Error("Unexpected response type from Claude");
     }
 
-    // Parse the JSON response
-    const connections = JSON.parse(content.text) as LateralConnection[];
+    // Parse the JSON response (strip markdown code blocks if present)
+    let jsonText = content.text.trim();
+    if (jsonText.startsWith("```json")) {
+      jsonText = jsonText.replace(/^```json\s*/, "").replace(/\s*```$/, "");
+    } else if (jsonText.startsWith("```")) {
+      jsonText = jsonText.replace(/^```\s*/, "").replace(/\s*```$/, "");
+    }
+    const connections = JSON.parse(jsonText) as LateralConnection[];
 
     // Validate the response
     if (!Array.isArray(connections) || connections.length === 0) {
