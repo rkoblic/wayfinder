@@ -32,6 +32,8 @@ export default function ExplorePage() {
   const [connections, setConnections] = useState<LateralConnection[]>([]);
   const [selectedConnection, setSelectedConnection] =
     useState<LateralConnection | null>(null);
+  const [bridgingText, setBridgingText] = useState("");
+  const [questions, setQuestions] = useState<string[]>([]);
   const [discoveryPrompt, setDiscoveryPrompt] = useState("");
   const [discoveryResponse, setDiscoveryResponse] = useState("");
   const [surprise, setSurprise] = useState("");
@@ -39,6 +41,7 @@ export default function ExplorePage() {
   const [metaphor, setMetaphor] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingPrompts, setIsLoadingPrompts] = useState(false);
 
   useEffect(() => {
     initializeExploration();
@@ -99,9 +102,35 @@ export default function ExplorePage() {
   }
 
   async function handleSelectConnection(connection: LateralConnection) {
-    setSelectedConnection(connection);
-    setStep("discovery");
-    // The discovery prompt will be generated when the user submits their response
+    try {
+      setSelectedConnection(connection);
+      setIsLoadingPrompts(true);
+      setError("");
+      setStep("discovery");
+
+      // Fetch discovery prompts
+      const params = new URLSearchParams({
+        connectionConcept: connection.concept,
+        connectionReason: connection.reason,
+        connectionType: connection.type,
+      });
+
+      const response = await fetch(
+        `/api/nodes/${nodeId}/discovery-prompts?${params}`
+      );
+
+      if (!response.ok) throw new Error("Failed to fetch discovery prompts");
+
+      const data = await response.json();
+      setBridgingText(data.bridgingText);
+      setQuestions(data.questions);
+    } catch (err) {
+      console.error("Error fetching discovery prompts:", err);
+      setError("Failed to generate exploration prompts. Please try again.");
+      setStep("connections");
+    } finally {
+      setIsLoadingPrompts(false);
+    }
   }
 
   async function handleSubmitDiscovery(e: React.FormEvent) {
@@ -122,6 +151,7 @@ export default function ExplorePage() {
         body: JSON.stringify({
           node_id: nodeId,
           response: discoveryResponse,
+          questions: questions,
         }),
       });
 
@@ -250,34 +280,101 @@ export default function ExplorePage() {
       {/* Step 2: Micro-Discovery */}
       {step === "discovery" && selectedConnection && (
         <div>
-          <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
+          <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-6">
             Micro-Discovery
           </h2>
-          <Card className="mb-6">
-            <div className="mb-4">
-              <span className="text-sm text-gray-500 dark:text-gray-400">
-                Exploring connection:
-              </span>
-              <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
-                {selectedConnection.concept}
-              </h3>
-            </div>
-          </Card>
 
-          <form onSubmit={handleSubmitDiscovery} className="space-y-4">
-            <TextArea
-              label="Take 1-5 minutes to respond to this exploration prompt:"
-              placeholder="Write your thoughts, observations, or examples..."
-              value={discoveryResponse}
-              onChange={(e) => setDiscoveryResponse(e.target.value)}
-              rows={6}
-              error={error}
-              disabled={isLoading}
-            />
-            <Button type="submit" isLoading={isLoading}>
-              Continue to Reflection
-            </Button>
-          </form>
+          {isLoadingPrompts ? (
+            <Loading text="Generating exploration prompts..." />
+          ) : (
+            <>
+              {/* Context Section */}
+              <Card className="mb-6 bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 border-blue-200 dark:border-blue-800">
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
+                      You started exploring:
+                    </p>
+                    <p className="text-lg font-semibold text-gray-900 dark:text-white">
+                      {seedText}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center justify-center">
+                    <span className="text-2xl text-gray-400 dark:text-gray-500">
+                      ↓
+                    </span>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        Now exploring:
+                      </p>
+                      <span className="text-xs font-medium px-2 py-1 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 uppercase">
+                        {selectedConnection.type}
+                      </span>
+                    </div>
+                    <p className="text-lg font-semibold text-gray-900 dark:text-white">
+                      {selectedConnection.concept}
+                    </p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-2 italic">
+                      {selectedConnection.reason}
+                    </p>
+                  </div>
+                </div>
+              </Card>
+
+              {/* Bridging Text */}
+              {bridgingText && (
+                <Card className="mb-6">
+                  <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
+                    {bridgingText}
+                  </p>
+                </Card>
+              )}
+
+              {/* Exploration Questions */}
+              {questions.length > 0 && (
+                <Card className="mb-6">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                    Reflection Questions
+                  </h3>
+                  <div className="space-y-4">
+                    {questions.map((question, index) => (
+                      <div
+                        key={index}
+                        className="flex gap-3 p-4 rounded-lg bg-gray-50 dark:bg-gray-800/50"
+                      >
+                        <span className="flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-semibold text-sm">
+                          {index + 1}
+                        </span>
+                        <p className="flex-1 text-gray-700 dark:text-gray-300">
+                          {question}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+              )}
+
+              {/* Response Area */}
+              <form onSubmit={handleSubmitDiscovery} className="space-y-4">
+                <TextArea
+                  label="Your Thoughts"
+                  placeholder="Take 5-10 minutes to explore these questions. Write your thoughts, observations, examples, or any connections you notice..."
+                  value={discoveryResponse}
+                  onChange={(e) => setDiscoveryResponse(e.target.value)}
+                  rows={8}
+                  error={error}
+                  disabled={isLoading}
+                />
+                <Button type="submit" isLoading={isLoading}>
+                  Continue to Reflection
+                </Button>
+              </form>
+            </>
+          )}
         </div>
       )}
 

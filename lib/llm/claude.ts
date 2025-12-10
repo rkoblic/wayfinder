@@ -19,6 +19,12 @@ export interface LateralConnection {
   type: "analogy" | "pattern" | "contrast" | "association";
 }
 
+// Type definition for discovery prompts
+export interface DiscoveryPrompts {
+  bridgingText: string;
+  questions: string[];
+}
+
 /**
  * Generate lateral connections for a given concept
  * Returns 3-6 sideways connections (analogies, patterns, contrasts)
@@ -113,6 +119,83 @@ Return the prompt as plain text only.`,
   } catch (error) {
     console.error("Error generating micro-discovery:", error);
     throw new Error("Failed to generate micro-discovery prompt");
+  }
+}
+
+/**
+ * Generate discovery prompts with context bridging
+ * Returns bridging text explaining the connection + 3 reflection questions
+ */
+export async function generateDiscoveryPrompts(
+  seedConcept: string,
+  lateralConnection: {
+    concept: string;
+    reason: string;
+    type: string;
+  }
+): Promise<DiscoveryPrompts> {
+  try {
+    const response = await anthropic.messages.create({
+      model: MODEL,
+      max_tokens: 800,
+      system:
+        "You are an assistant that helps people explore conceptual connections. Create contextual bridging text and thought-provoking questions that connect two related concepts.",
+      messages: [
+        {
+          role: "user",
+          content: `The user started exploring: "${seedConcept}"
+
+They selected this lateral connection:
+- Concept: "${lateralConnection.concept}"
+- Relationship: ${lateralConnection.type}
+- Reason: "${lateralConnection.reason}"
+
+Generate a JSON response with:
+1. "bridgingText": A 2-3 sentence paragraph that explains how these concepts connect and invites deeper exploration. Make it engaging and thought-provoking.
+2. "questions": An array of exactly 3 open-ended reflection questions that:
+   - Help the user explore the relationship between these concepts
+   - Encourage personal observations, comparisons, or concrete examples
+   - Build on each other progressively
+   - Can be answered in 5-10 minutes total
+
+Return only valid JSON with this structure:
+{
+  "bridgingText": "...",
+  "questions": ["...", "...", "..."]
+}`,
+        },
+      ],
+    });
+
+    // Extract the text content from the response
+    const content = response.content[0];
+    if (content.type !== "text") {
+      throw new Error("Unexpected response type from Claude");
+    }
+
+    // Parse the JSON response (strip markdown code blocks if present)
+    let jsonText = content.text.trim();
+    if (jsonText.startsWith("```json")) {
+      jsonText = jsonText.replace(/^```json\s*/, "").replace(/\s*```$/, "");
+    } else if (jsonText.startsWith("```")) {
+      jsonText = jsonText.replace(/^```\s*/, "").replace(/\s*```$/, "");
+    }
+
+    const prompts = JSON.parse(jsonText) as DiscoveryPrompts;
+
+    // Validate the response
+    if (
+      !prompts.bridgingText ||
+      !Array.isArray(prompts.questions) ||
+      prompts.questions.length !== 3
+    ) {
+      throw new Error("Invalid response format from Claude");
+    }
+
+    return prompts;
+  } catch (error) {
+    console.error("Error generating discovery prompts:", error);
+    throw new Error("Failed to generate discovery prompts");
   }
 }
 

@@ -6,11 +6,12 @@ import { getDefaultUser } from "@/lib/db/helpers";
 /**
  * POST /api/micro-discoveries
  * Create a micro-discovery with user's response
+ * Expects: node_id, response, questions (array of reflection questions)
  */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { node_id, response } = body;
+    const { node_id, response, questions } = body;
 
     if (!node_id || typeof node_id !== "string") {
       return NextResponse.json(
@@ -22,6 +23,13 @@ export async function POST(request: NextRequest) {
     if (!response || typeof response !== "string" || response.trim().length === 0) {
       return NextResponse.json(
         { error: "response is required and must be a non-empty string" },
+        { status: 400 }
+      );
+    }
+
+    if (!questions || !Array.isArray(questions)) {
+      return NextResponse.json(
+        { error: "questions must be an array" },
         { status: 400 }
       );
     }
@@ -43,15 +51,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Generate micro-discovery prompt using LLM
-    const prompt = await generateMicroDiscovery(node.concept);
+    // Store questions as JSON string in the prompt field
+    const promptData = JSON.stringify(questions);
 
     // Create the micro-discovery
     const microDiscovery = await prisma.microDiscovery.create({
       data: {
         userId: user.id,
         nodeId: node_id,
-        prompt,
+        prompt: promptData,
         response: response.trim(),
       },
     });
