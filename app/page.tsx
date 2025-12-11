@@ -83,6 +83,15 @@ export default function Home() {
     <div className="max-w-4xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
       {/* Header */}
       <div className="text-center mb-12">
+        <div className="flex justify-end mb-4">
+          <Button
+            onClick={() => router.push("/reflections")}
+            variant="secondary"
+            size="sm"
+          >
+            View Reflections
+          </Button>
+        </div>
         <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
           Welcome to Wayfinder
         </h1>

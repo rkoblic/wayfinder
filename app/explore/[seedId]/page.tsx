@@ -42,10 +42,33 @@ export default function ExplorePage() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingPrompts, setIsLoadingPrompts] = useState(false);
+  const [tagSuggestions, setTagSuggestions] = useState<
+    { tag: string; count: number }[]
+  >([]);
+  const [showContext, setShowContext] = useState(true);
 
   useEffect(() => {
     initializeExploration();
   }, [seedId]);
+
+  // Fetch tag suggestions when reflection step loads
+  useEffect(() => {
+    if (step === "reflection") {
+      fetchTagSuggestions();
+    }
+  }, [step]);
+
+  async function fetchTagSuggestions() {
+    try {
+      const response = await fetch("/api/reflections");
+      if (!response.ok) return; // Silently fail if no reflections yet
+      const data = await response.json();
+      setTagSuggestions(data.tag_counts || []);
+    } catch (err) {
+      console.error("Error fetching tag suggestions:", err);
+      // Don't show error to user, just skip suggestions
+    }
+  }
 
   async function initializeExploration() {
     try {
@@ -385,6 +408,60 @@ export default function ExplorePage() {
             Reflection
           </h2>
 
+          {/* Context Card - Collapsible */}
+          <Card className="mb-6">
+            <button
+              type="button"
+              onClick={() => setShowContext(!showContext)}
+              className="w-full flex items-center justify-between mb-3 text-left"
+            >
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+                Exploration Context
+              </h3>
+              <span className="text-gray-500 dark:text-gray-400">
+                {showContext ? "−" : "+"}
+              </span>
+            </button>
+
+            {showContext && (
+              <div className="space-y-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                <div>
+                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                    Original Seed:
+                  </p>
+                  <p className="text-sm text-gray-700 dark:text-gray-300">
+                    {seedText}
+                  </p>
+                </div>
+
+                {selectedConnection && (
+                  <div>
+                    <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                      Lateral Connection ({selectedConnection.type}):
+                    </p>
+                    <p className="text-sm text-gray-700 dark:text-gray-300">
+                      {selectedConnection.concept}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 italic">
+                      {selectedConnection.reason}
+                    </p>
+                  </div>
+                )}
+
+                {bridgingText && (
+                  <div>
+                    <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                      Bridging Insight:
+                    </p>
+                    <p className="text-sm text-gray-700 dark:text-gray-300">
+                      {bridgingText}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+          </Card>
+
           <Card className="mb-6">
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
               Your response:
@@ -403,23 +480,50 @@ export default function ExplorePage() {
               rows={3}
             />
 
-            <Input
-              label="Tag this exploration (required)"
-              placeholder="e.g., systems, aesthetics, paradox"
-              value={tag}
-              onChange={(e) => setTag(e.target.value)}
-              error={error}
-              disabled={isLoading}
-              required
-            />
+            <div>
+              <Input
+                label="Tag this exploration (required)"
+                placeholder="e.g., systems, aesthetics, paradox"
+                value={tag}
+                onChange={(e) => setTag(e.target.value)}
+                error={error}
+                disabled={isLoading}
+                required
+              />
+              {tagSuggestions.length > 0 && !tag && (
+                <div className="mt-2">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                    Previously used tags:
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {tagSuggestions.slice(0, 5).map((suggestion) => (
+                      <button
+                        key={suggestion.tag}
+                        type="button"
+                        onClick={() => setTag(suggestion.tag)}
+                        className="px-2 py-1 text-sm rounded-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                      >
+                        {suggestion.tag} ({suggestion.count})
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
 
-            <TextArea
-              label="Metaphor or phrase (optional)"
-              placeholder="Any metaphor that comes to mind?"
-              value={metaphor}
-              onChange={(e) => setMetaphor(e.target.value)}
-              rows={2}
-            />
+            <div>
+              <TextArea
+                label="Metaphor or phrase (optional)"
+                placeholder="e.g., 'building bridges in fog', 'mapping constellations', 'weaving through contradictions'"
+                value={metaphor}
+                onChange={(e) => setMetaphor(e.target.value)}
+                rows={2}
+              />
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                Metaphors help you see patterns across different domains and make
+                connections more memorable
+              </p>
+            </div>
 
             <Button type="submit" isLoading={isLoading}>
               Complete Exploration
@@ -439,9 +543,12 @@ export default function ExplorePage() {
             <p className="text-gray-600 dark:text-gray-400 mb-6">
               Your reflection has been added to your curiosity map.
             </p>
-            <div className="flex gap-4 justify-center">
+            <div className="flex flex-wrap gap-3 justify-center">
               <Button onClick={() => router.push("/")}>
                 Return Home
+              </Button>
+              <Button variant="secondary" onClick={() => router.push("/reflections")}>
+                View Reflections
               </Button>
               <Button variant="secondary" onClick={() => router.push("/map")}>
                 View Curiosity Map
