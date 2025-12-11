@@ -28,6 +28,7 @@ export async function GET(request: NextRequest) {
         from: { userId: user.id },
       },
       select: {
+        id: true,
         fromNode: true,
         toNode: true,
         relation: true,
@@ -40,6 +41,7 @@ export async function GET(request: NextRequest) {
         concept: node.concept,
       })),
       edges: links.map((link) => ({
+        id: link.id,
         from_node: link.fromNode,
         to_node: link.toNode,
         relation: link.relation,

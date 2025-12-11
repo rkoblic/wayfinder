@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Card from "@/components/ui/Card";
 import Loading from "@/components/ui/Loading";
+import Button from "@/components/ui/Button";
 
 interface Node {
   id: string;
@@ -10,6 +11,7 @@ interface Node {
 }
 
 interface Edge {
+  id: string;
   from_node: string;
   to_node: string;
   relation: string;

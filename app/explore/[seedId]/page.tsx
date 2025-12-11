@@ -167,7 +167,7 @@ export default function ExplorePage() {
       setIsLoading(true);
       setError("");
 
-      // Create micro-discovery
+      // Create micro-discovery (and node + lateral link if connection exists)
       const response = await fetch("/api/micro-discoveries", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -175,6 +175,13 @@ export default function ExplorePage() {
           node_id: nodeId,
           response: discoveryResponse,
           questions: questions,
+          connection: selectedConnection
+            ? {
+                concept: selectedConnection.concept,
+                type: selectedConnection.type,
+                reason: selectedConnection.reason,
+              }
+            : null,
         }),
       });
 
