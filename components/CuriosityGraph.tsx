@@ -56,8 +56,8 @@ function calculateLayout(nodes: Node[], edges: Edge[]): Map<string, { x: number;
 
   if (nodeCount === 0) return positions;
 
-  // Initialize positions in a circle
-  const radius = Math.max(200, nodeCount * 30);
+  // Initialize positions in a circle with better spacing
+  const radius = Math.max(300, nodeCount * 50);
   nodes.forEach((node, index) => {
     const angle = (index / nodeCount) * 2 * Math.PI;
     positions.set(node.id, {
@@ -66,9 +66,9 @@ function calculateLayout(nodes: Node[], edges: Edge[]): Map<string, { x: number;
     });
   });
 
-  // Simple force-directed iterations
-  const iterations = 50;
-  const k = Math.sqrt((800 * 600) / nodeCount); // Ideal distance
+  // Simple force-directed iterations with stronger forces
+  const iterations = 100;
+  const k = Math.sqrt((1200 * 800) / nodeCount); // Ideal distance - increased spacing
 
   for (let iter = 0; iter < iterations; iter++) {
     // Repulsive forces between all nodes
@@ -84,8 +84,8 @@ function calculateLayout(nodes: Node[], edges: Edge[]): Map<string, { x: number;
         const distance = Math.sqrt(dx * dx + dy * dy) || 1;
 
         const force = (k * k) / distance;
-        const fx = (dx / distance) * force;
-        const fy = (dy / distance) * force;
+        const fx = (dx / distance) * force * 1.5; // Stronger repulsion
+        const fy = (dy / distance) * force * 1.5;
 
         pos1.x += fx;
         pos1.y += fy;
@@ -106,13 +106,13 @@ function calculateLayout(nodes: Node[], edges: Edge[]): Map<string, { x: number;
       const distance = Math.sqrt(dx * dx + dy * dy) || 1;
 
       const force = (distance * distance) / k;
-      const fx = (dx / distance) * force;
-      const fy = (dy / distance) * force;
+      const fx = (dx / distance) * force * 0.3; // Weaker attraction
+      const fy = (dy / distance) * force * 0.3;
 
-      pos1.x -= fx * 0.5;
-      pos1.y -= fy * 0.5;
-      pos2.x += fx * 0.5;
-      pos2.y += fy * 0.5;
+      pos1.x -= fx;
+      pos1.y -= fy;
+      pos2.x += fx;
+      pos2.y += fy;
     });
   }
 
@@ -140,6 +140,8 @@ export default function CuriosityGraph({
         id: node.id,
         data: { label: node.concept },
         position: pos,
+        draggable: true,
+        selectable: true,
         style: {
           background: isSelected ? "#3b82f6" : "#ffffff",
           color: isSelected ? "#ffffff" : "#000000",
@@ -148,7 +150,7 @@ export default function CuriosityGraph({
           padding: "10px 15px",
           fontSize: "14px",
           fontWeight: isSelected ? "600" : "500",
-          cursor: "pointer",
+          cursor: "grab",
           boxShadow: isSelected
             ? "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)"
             : "0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)",
@@ -217,6 +219,12 @@ export default function CuriosityGraph({
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onNodeClick={onNodeClickHandler}
+        nodesDraggable={true}
+        nodesConnectable={false}
+        elementsSelectable={true}
+        panOnDrag={[1, 2]} // Allow pan with middle/right mouse or shift+drag
+        selectionOnDrag={false}
+        zoomOnScroll={true}
         connectionMode={ConnectionMode.Loose}
         fitView
         fitViewOptions={{
