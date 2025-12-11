@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import ReactFlow, {
   Node as FlowNode,
   Edge as FlowEdge,
@@ -127,10 +127,22 @@ export default function CuriosityGraph({
 }: CuriosityGraphProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const initializedRef = useRef(false);
 
-  // Convert data to React Flow format and apply layout
+  // Calculate layout only when nodes/edges data changes (not when selectedNodeId changes)
   useEffect(() => {
+    if (dataNodes.length === 0) {
+      setNodes([]);
+      setEdges([]);
+      initializedRef.current = false;
+      return;
+    }
+
     const positions = calculateLayout(dataNodes, dataEdges);
+
+    // Debug logging
+    console.log('Layout calculated for', dataNodes.length, 'nodes');
+    console.log('Sample positions:', Array.from(positions.entries()).slice(0, 3));
 
     const flowNodes: FlowNode[] = dataNodes.map((node) => {
       const pos = positions.get(node.id) || { x: 0, y: 0 };
@@ -138,10 +150,12 @@ export default function CuriosityGraph({
 
       return {
         id: node.id,
+        type: 'default',
         data: { label: node.concept },
         position: pos,
         draggable: true,
         selectable: true,
+        connectable: false,
         style: {
           background: isSelected ? "#3b82f6" : "#ffffff",
           color: isSelected ? "#ffffff" : "#000000",
@@ -184,7 +198,32 @@ export default function CuriosityGraph({
 
     setNodes(flowNodes);
     setEdges(flowEdges);
+    initializedRef.current = true;
   }, [dataNodes, dataEdges, selectedNodeId, setNodes, setEdges]);
+
+  // Separate effect to update only node styles when selectedNodeId changes
+  useEffect(() => {
+    if (!initializedRef.current) return;
+
+    setNodes((nds) =>
+      nds.map((node) => {
+        const isSelected = node.id === selectedNodeId;
+        return {
+          ...node,
+          style: {
+            ...node.style,
+            background: isSelected ? "#3b82f6" : "#ffffff",
+            color: isSelected ? "#ffffff" : "#000000",
+            border: `2px solid ${isSelected ? "#2563eb" : "#d1d5db"}`,
+            fontWeight: isSelected ? "600" : "500",
+            boxShadow: isSelected
+              ? "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)"
+              : "0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)",
+          },
+        };
+      })
+    );
+  }, [selectedNodeId, setNodes]);
 
   const onNodeClickHandler = useCallback(
     (event: React.MouseEvent, node: FlowNode) => {
@@ -222,20 +261,22 @@ export default function CuriosityGraph({
         nodesDraggable={true}
         nodesConnectable={false}
         elementsSelectable={true}
-        panOnDrag={[1, 2]} // Allow pan with middle/right mouse or shift+drag
+        panOnDrag={true}
         selectionOnDrag={false}
         zoomOnScroll={true}
         connectionMode={ConnectionMode.Loose}
-        fitView
-        fitViewOptions={{
-          padding: 0.2,
-          minZoom: 0.5,
-          maxZoom: 1.5,
-        }}
         minZoom={0.1}
         maxZoom={2}
         defaultEdgeOptions={{
           type: "smoothstep",
+        }}
+        onInit={(reactFlowInstance) => {
+          // Fit view once on initialization
+          reactFlowInstance.fitView({
+            padding: 0.2,
+            minZoom: 0.5,
+            maxZoom: 1.5,
+          });
         }}
       >
         <Background color="#9ca3af" gap={16} />
