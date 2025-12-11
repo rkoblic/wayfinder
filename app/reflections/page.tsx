@@ -19,7 +19,7 @@ interface Reflection {
     generated_via: string;
     seed: {
       id: string;
-      content: string;
+      text: string;
     } | null;
     micro_discovery: {
       id: string;
@@ -208,7 +208,7 @@ export default function ReflectionsPage() {
                         Original Seed:
                       </p>
                       <p className="text-gray-600 dark:text-gray-400">
-                        {reflection.node.seed.content}
+                        {reflection.node.seed.text}
                       </p>
                     </div>
                   )}

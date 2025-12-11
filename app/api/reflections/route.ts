@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
           seed: r.node.seed
             ? {
                 id: r.node.seed.id,
-                content: r.node.seed.content,
+                text: r.node.seed.text,
               }
             : null,
           micro_discovery: r.node.microDiscoveries[0]
