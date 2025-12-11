@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Card from "@/components/ui/Card";
 import Loading from "@/components/ui/Loading";
 import Button from "@/components/ui/Button";
+import CuriosityGraph from "@/components/CuriosityGraph";
 
 interface Node {
   id: string;
@@ -22,6 +23,8 @@ interface MapData {
   edges: Edge[];
 }
 
+type ViewMode = "list" | "graph";
+
 export default function MapPage() {
   const [mapData, setMapData] = useState<MapData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -34,6 +37,7 @@ export default function MapPage() {
     id: string;
     relation: string;
   } | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>("list");
 
   useEffect(() => {
     fetchMap();
@@ -146,9 +150,29 @@ export default function MapPage() {
     <div className="max-w-6xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-          Your Curiosity Map
-        </h1>
+        <div className="flex items-center justify-between mb-2">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+            Your Curiosity Map
+          </h1>
+          {mapData && mapData.nodes.length > 0 && (
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant={viewMode === "list" ? "primary" : "secondary"}
+                onClick={() => setViewMode("list")}
+              >
+                List View
+              </Button>
+              <Button
+                size="sm"
+                variant={viewMode === "graph" ? "primary" : "secondary"}
+                onClick={() => setViewMode("graph")}
+              >
+                Graph View
+              </Button>
+            </div>
+          )}
+        </div>
         <p className="text-gray-600 dark:text-gray-400">
           Visualize your exploration patterns and connections
         </p>
@@ -202,7 +226,16 @@ export default function MapPage() {
             home page!
           </p>
         </Card>
+      ) : viewMode === "graph" ? (
+        /* Graph View */
+        <CuriosityGraph
+          nodes={mapData.nodes}
+          edges={mapData.edges}
+          onNodeClick={setSelectedNode}
+          selectedNodeId={selectedNode?.id || null}
+        />
       ) : (
+        /* List View */
         <div className="grid md:grid-cols-2 gap-8">
           {/* Nodes List */}
           <div>
